@@ -1,9 +1,84 @@
 ---
 title: "predictive_maintenance.Rmd"
 output: html_document
-date: "2023-10-03"
+date: "`r Sys.Date()`"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+```
+
+# Load data
+
+- **Telemetry Time Series Data** (PdM_telemetry.csv): It consists of hourly average of voltage, rotation, pressure, vibration collected from 100 machines for the year 2015.
+- **Errors** (PdM_errors.csv): These are errors encountered by the machines while in operating condition. Since, these errors don't shut down the machines, these are not considered as failures. The error date and times are rounded to the closest hour since the telemetry data is collected at an hourly rate.
+- **Maintenance** (PdM_maint.csv): If a component of a machine is replaced, that is captured as a record in this table. Components are replaced under two situations:
+  - During the regular scheduled visit, the technician replaced it (Proactive Maintenance)
+  - A component breaks down and then the technician does an unscheduled maintenance to replace the component (Reactive Maintenance). This is considered as a failure and corresponding data is captured under Failures. Maintenance data has both 2014 and 2015 records. This data is rounded to the closest hour since the telemetry data is collected at an hourly rate.
+- **Failures** (PdM_failures.csv): Each record represents replacement of a component due to failure. This data is a subset of Maintenance data. This data is rounded to the closest hour since the telemetry data is collected at an hourly rate.
+- **Metadata of Machines** (PdM_Machines.csv): Model type & age of the Machines.
+
+```{r}
+pdm_telemetry <- read_csv(
+  "data/PdM_telemetry.csv",
+  col_types = cols(
+    datetime = col_datetime(format = "%Y-%m-%d %H:%M:%S"),
+    machineID = col_integer(),
+    volt = col_double(),
+    rotate = col_double(),
+    pressure = col_double(),
+    vibration = col_double()
+  )
+)
+pdm_errors <- read_csv(
+  "data/PdM_errors.csv",
+  col_types = cols(
+    datetime = col_datetime(format = "%Y-%m-%d %H:%M:%S"),
+    machineID = col_integer(),
+    errorID = col_character()
+  )
+)
+pdm_maint <- read_csv(
+  "data/PdM_maint.csv",
+  col_types = cols(
+    datetime = col_datetime(format = "%Y-%m-%d %H:%M:%S"),
+    machineID = col_integer(),
+    comp = col_character()
+  )
+)
+pdm_failures <- read_csv(
+  "data/PdM_failures.csv",
+  col_types = cols(
+    datetime = col_datetime(format = "%Y-%m-%d %H:%M:%S"),
+    machineID = col_integer(),
+    failure = col_character()
+  )
+)
+pdm_machines <- read_csv(
+  "data/PdM_machines.csv",
+  col_types = cols(
+    machineID = col_integer(),
+    model = col_character(),
+    age = col_integer()
+  )
+)
+```
+
+```{r}
+pdm_telemetry <- pdm_telemetry %>%
+  arrange(datetime, machineID)
+
+pdm_errors <- pdm_errors %>%
+  arrange(datetime, machineID)
+
+pdm_maint <- pdm_maint %>%
+  arrange(datetime, machineID)
+
+pdm_failures <- pdm_failures %>%
+  arrange(datetime, machineID)
 ```
