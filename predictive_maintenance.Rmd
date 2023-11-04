@@ -103,7 +103,7 @@ print(pdm_telemetry %>%
 
 ### Data range
 ```{r}
-date_range <- pdm_telemetry %>%
+date_range_telemetry <- pdm_telemetry %>%
   summarize(
     min_datetime = min(datetime),
     max_datetime = max(datetime)
@@ -111,9 +111,9 @@ date_range <- pdm_telemetry %>%
 
 print(paste(
   "Data is available in the date range from",
-  date_range$min_datetime,
+  date_range_telemetry$min_datetime,
   "to",
-  date_range$max_datetime
+  date_range_telemetry$max_datetime
 ))
 ```
 ### Data Quality Check
@@ -163,3 +163,147 @@ ggplot(df_machine_1_long, aes(x = datetime, y = value, color = variable)) +
 - There are 100 unique Machines.
 - There are no duplicates or missing values in the pdm_telemetry dataset.
 - The four parameters voltage, vibration, pressure & rotation are normally distributed.
+
+# EDA: Error
+```{r}
+glimpse(pdm_errors)
+head(pdm_errors)
+```
+
+### n_unique_errors
+```{r}
+unique_errors <- pdm_errors %>%
+  distinct(errorID) %>%
+  nrow()
+
+print("The number of unique errors in the pdm_errors dataset is:")
+print(unique_errors)
+```
+
+### Data range
+```{r}
+date_range_errors <- pdm_errors %>%
+  summarize(
+    min_datetime = min(datetime),
+    max_datetime = max(datetime)
+  )
+
+print(paste(
+  "Data is available in the date range from",
+  date_range_errors$min_datetime,
+  "to",
+  date_range_errors$max_datetime
+))
+```
+
+### Data Quality Check
+```{r}
+# Check for duplicates
+if (any(duplicated(pdm_errors))) {
+  cat("There are duplicates in the dataset.\n")
+} else {
+  cat("There are no duplicates in the dataset.\n")
+}
+
+# Check for missing values
+if (any(is.na(pdm_errors))) {
+  cat("There are missing values in the dataset.\n")
+} else {
+  cat("There are no missing values in the dataset.\n")
+}
+```
+
+### Bar Plot of Different Error Types
+```{r}
+# Create a bar plot for error types
+plot <- ggplot(pdm_errors, aes(x = errorID)) +
+  geom_bar() +
+  labs(
+    x = "Error Type",
+    y = "Count",
+    title = "Different Types of Errors"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+
+### Bar Plot of Errors Across MachineID
+```{r}
+# Create a bar plot for errors across MachineID
+plot <- ggplot(pdm_errors, aes(x = machineID)) +
+  geom_bar() +
+  coord_flip() +
+  labs(
+    x = "MachineID",
+    y = "Count",
+    title = "Number of Errors Across MachineID"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+
+### Machine-to-Error Distribution
+```{r}
+# Group by machineID and errorID, count occurrences, and reset column names
+df_errors <- pdm_errors %>%
+  group_by(machineID, errorID) %>%
+  summarise(errorValues = n()) %>%
+  ungroup()
+
+# Create a stacked bar plot for machine-to-error distribution
+plot <- ggplot(df_errors, aes(x = factor(machineID), y = errorValues, fill = errorID)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.8) +
+  labs(
+    x = "Machine ID",
+    y = "Number of Errors",
+    title = "Count of Errors for Different Machines"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")  # Move the legend to the top
+
+print(plot)
+```
+
+### Plot Number of Errors Across Machines Over Days
+```{r}
+# Count errors by date and sort by index
+errors_count <- table(as.Date(pdm_errors$datetime))
+
+# Create a time series plot for the number of errors across days
+plot <- ggplot(data.frame(date = as.Date(names(errors_count)), count = as.numeric(errors_count)), aes(x = date, y = count)) +
+  geom_line(size = 1) +
+  labs(
+    x = "Time",
+    y = "Number of Errors",
+    title = "Number of Errors Across Days"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+
+### Distribution of the Number of Errors Per Day Across Machines
+```{r}
+# Convert datetime to date in the pdm_errors
+pdm_errors$date <- as.Date(pdm_errors$datetime)
+
+# Group by date, count occurrences, and create a histogram
+errors_per_day <- pdm_errors %>%
+  group_by(date) %>%
+  summarise(ErrorCount = n())
+
+# Create a histogram of the number of errors per day
+plot <- ggplot(errors_per_day, aes(x = ErrorCount)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(
+    x = "Number of Errors on a Particular Day",
+    y = "Frequency",
+    title = "Distribution of Number of Errors Per Day"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+
