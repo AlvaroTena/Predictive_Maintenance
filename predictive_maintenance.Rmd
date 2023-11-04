@@ -9,12 +9,103 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+if (!require(readr)) {
+  install.packages("readr")
+}
+if (!require(dplyr)) {
+  install.packages("dplyr")
+}
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+}
+if (!require(GGally)) {
+  install.packages("GGally")
+}
+if (!require(tidyr)) {
+  install.packages("tidyr")
+}
+if (!require(plotly)) {
+  install.packages("plotly")
+}
+if (!require(tidyverse)) {
+  install.packages("tidyverse")
+}
+if (!require(ppcor)) {
+  install.packages("ppcor")
+}
+if (!require(MASS)) {
+  install.packages("MASS")
+}
+if (!require(pwr)) {
+  install.packages("pwr")
+}
+if (!require(psych)) {
+  install.packages("psych")
+}
+if (!require(corrplot)) {
+  install.packages("corrplot")
+}
+if (!require(PerformanceAnalytics)) {
+  install.packages("PerformanceAnalytics")
+}
+if (!require(lubridate)) {
+  install.packages("lubridate")
+}
+if (!require(feasts)) {
+  install.packages("feasts")
+}
+if (!require(reshape2)) {
+  install.packages("reshape2")
+}
+if (!require(fable)) {
+  install.packages("fable")
+}
+if (!require(forecast)) {
+  install.packages("forecast")
+}
+if (!require(foreign)) {
+  install.packages("foreign")
+}
+if (!require(fpp2)) {
+  install.packages("fpp2")
+}
+if (!require(stats)) {
+  install.packages("stats")
+}
+if (!require(tseries)) {
+  install.packages("tseries")
+}
+if (!require(astsa)) {
+  install.packages("astsa")
+}
+if (!require(quantmod)) {
+  install.packages("quantmod")
+}
+
 library(readr)
 library(dplyr)
 library(ggplot2)
 library(GGally)
 library(tidyr)
 library(plotly)
+library(tidyverse)
+library(ppcor)
+library(MASS)
+library(pwr)
+library(psych)
+library(corrplot)
+library(PerformanceAnalytics)
+library(lubridate)
+library(feasts)
+library(reshape2)
+library(fable)
+library(forecast)
+library(foreign)
+library(fpp2)
+library(stats)
+library(tseries)
+library(astsa)
+library(quantmod)
 ```
 ### helper functions
 ```{r}
@@ -144,20 +235,19 @@ analyze_data_quality(pdm_telemetry)
 
 ### Correlation and Distribution Scatterplot Matrix
 ```{r}
-ggpairs(pdm_telemetry %>%
-  select(volt, rotate, pressure, vibration))
+ggpairs(pdm_telemetry, columns = c("volt", "rotate", "pressure", "vibration"))
 ```
 
 ### Visualize Machine 1 Sensor Data
 ```{r}
 # Filter and select data for Machine 1
 df_machine_1 <- pdm_telemetry %>%
-  filter(machineID == 1) %>%
-  select(datetime, volt, rotate, pressure, vibration)
+  dplyr::filter(machineID == 1) 
 
 # Reshape the data to long format
 df_machine_1_long <- df_machine_1 %>%
-  gather(variable, value, -datetime)
+  dplyr::select(datetime, volt, rotate, pressure, vibration) %>%
+  tidyr::pivot_longer(cols = c(volt, rotate, pressure, vibration), names_to = "variable", values_to = "value")
 
 # Create a facetted line plot
 ggplot(df_machine_1_long, aes(x = datetime, y = value, color = variable)) +
@@ -492,3 +582,110 @@ fig <- plot_ly(pdm_failures, x = ~failure, type = "histogram") %>%
 fig
 ```
 
+# Predictive Model
+```{r}
+combined_data <- pdm_telemetry %>%
+  full_join(pdm_failures, by = c("machineID", "datetime"))
+# Create a summary of the number of days with and without failures
+combined_data <- combined_data %>%
+  mutate(has_failure = datetime %in% pdm_failures$datetime)
+summary_data <- combined_data %>%
+  group_by(has_failure) %>%
+  summarise(count = n())
+```
+
+```{r}
+ggplot(summary_data, aes(x = factor(has_failure), y = count, fill = factor(has_failure))) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("red", "green")) + 
+  labs(x = "Machine failure", y = "Number of Days") +
+  theme_minimal()
+```
+
+```{r}
+total_failures <- sum(combined_data$has_failure)
+total_failures
+```
+```{r}
+library(lubridate)
+
+# Suppose datetime is a column of combined_data
+# Extract datetime components
+combined_data$year <- year(combined_data$datetime)
+combined_data$month <- month(combined_data$datetime)
+combined_data$day <- day(combined_data$datetime)
+combined_data$hour <- hour(combined_data$datetime)
+
+# Create a new column for the day of the week
+combined_data$weekday <- wday(combined_data$datetime, label = TRUE)
+
+# Create a new column for the day of the year
+combined_data$day_of_year <- yday(combined_data$datetime)
+
+```
+```{r}
+
+# Filter rows with non-null values in the variable 'failure'.
+filtered_data <- combined_data[!is.na(combined_data$failure), ]
+
+# Group data by month and count total failures
+monthly_failures <- filtered_data %>%
+  group_by(month) %>%
+  summarise(total_failures = sum(!is.na(failure)))
+
+# Create a seasonal chart for total failures
+ggplot(monthly_failures, aes(x = month, y = total_failures)) +
+  geom_bar(stat = "identity", fill = "lightcoral") +
+  labs(title = "Seasonal Pattern of Total Failures",
+       x = "Month", y = "Number of Total Failures") +
+  theme_minimal()
+
+
+```
+
+```{r}
+combined_data <- combined_data %>% 
+  mutate(failure_indicator = ifelse(!is.na(failure), 1, 0)) %>%
+  group_by(datetime) %>%
+  summarise(total_failures = sum(failure_indicator))
+```
+
+```{r}
+# Create a time series of total_failures with hourly frequency (24) and set the start time.
+total_failures.ts <- ts(combined_data$total_failures, 
+                        start = c(2015, 1, 1, 6),  # Adjust the start-up to January 1, 2015
+                        frequency = 1)
+
+total_failures.ts
+```
+```{r}
+plot(total_failures.ts)
+adf.test(total_failures.ts)
+```
+```{r}
+total_failures_log <- log(total_failures.ts)
+total_failures_log <- total_failures_log[!is.na(total_failures_log)]
+plot(total_failures_log)
+adf.test(total_failures_log, alternative = 'stationary')
+```
+```{r}
+modelT=auto.arima(total_failures.ts)
+modelT
+summary(modelT)
+```
+```{r}
+par(mar=c(5, 4, 2, 2))
+tsdiag(modelT)
+```
+```{r}
+#Ruido blanco
+Box.test(residuals(modelT), type = "Ljung-Box")
+error_modelT=residuals(modelT)
+plot(error_modelT)
+```
+```{r}
+#Realizamos la predicción
+predictT <- forecast::forecast(modelT, h = 30)
+predictT
+plot(predictT)
+```
