@@ -16,6 +16,41 @@ library(GGally)
 library(tidyr)
 library(plotly)
 ```
+### helper functions
+```{r}
+# Function to analyze data range, check for duplicates, and missing values
+analyze_data_quality <- function(data_frame) {
+  # Data range
+  date_range <- data_frame %>%
+    summarize(
+      min_datetime = min(datetime),
+      max_datetime = max(datetime)
+    )
+  
+  min_date <- format(date_range$min_datetime, format = "%Y-%m-%d %H:%M:%S")
+  max_date <- format(date_range$max_datetime, format = "%Y-%m-%d %H:%M:%S")
+  
+  cat("Data is available in the date range from",
+      min_date,
+      "to",
+      max_date, "\n")
+  
+  # Check for duplicates
+  if (any(duplicated(data_frame))) {
+    cat("There are duplicates in the dataset.\n")
+  } else {
+    cat("There are no duplicates in the dataset.\n")
+  }
+  
+  # Check for missing values
+  if (any(is.na(data_frame))) {
+    cat("There are missing values in the dataset.\n")
+  } else {
+    cat("There are no missing values in the dataset.\n")
+  }
+}
+```
+
 
 # Load data
 
@@ -102,36 +137,9 @@ print(pdm_telemetry %>%
 )
 ```
 
-### Data range
-```{r}
-date_range_telemetry <- pdm_telemetry %>%
-  summarize(
-    min_datetime = min(datetime),
-    max_datetime = max(datetime)
-  )
-
-print(paste(
-  "Data is available in the date range from",
-  date_range_telemetry$min_datetime,
-  "to",
-  date_range_telemetry$max_datetime
-))
-```
 ### Data Quality Check
 ```{r}
-# Check for duplicates
-if (any(duplicated(pdm_telemetry))) {
-  cat("There are duplicates in the dataset.\n")
-} else {
-  cat("There are no duplicates in the dataset.\n")
-}
-
-# Check for missing values
-if (any(is.na(pdm_telemetry))) {
-  cat("There are missing values in the dataset.\n")
-} else {
-  cat("There are no missing values in the dataset.\n")
-}
+analyze_data_quality(pdm_telemetry)
 ```
 
 ### Correlation and Distribution Scatterplot Matrix
@@ -182,37 +190,9 @@ print("The number of unique errors in the pdm_errors dataset is:")
 print(unique_errors)
 ```
 
-### Data range
-```{r}
-date_range_errors <- pdm_errors %>%
-  summarize(
-    min_datetime = min(datetime),
-    max_datetime = max(datetime)
-  )
-
-print(paste(
-  "Data is available in the date range from",
-  date_range_errors$min_datetime,
-  "to",
-  date_range_errors$max_datetime
-))
-```
-
 ### Data Quality Check
 ```{r}
-# Check for duplicates
-if (any(duplicated(pdm_errors))) {
-  cat("There are duplicates in the dataset.\n")
-} else {
-  cat("There are no duplicates in the dataset.\n")
-}
-
-# Check for missing values
-if (any(is.na(pdm_errors))) {
-  cat("There are missing values in the dataset.\n")
-} else {
-  cat("There are no missing values in the dataset.\n")
-}
+analyze_data_quality(pdm_errors)
 ```
 
 ### Bar Plot of Different Error Types
@@ -318,39 +298,11 @@ glimpse(pdm_maint)
 head(pdm_maint)
 ```
 
-### Data range
-```{r}
-date_range_maint <- pdm_maint %>%
-  summarize(
-    min_datetime = min(datetime),
-    max_datetime = max(datetime)
-  )
-
-print(paste(
-  "Data is available in the date range from",
-  date_range_maint$min_datetime,
-  "to",
-  date_range_maint$max_datetime
-))
-```
-Maintenance data is present June 2014 onwards. This is different from other data which are present between 2015 and 2016.
-
 ### Data Quality Check
 ```{r}
-# Check for duplicates
-if (any(duplicated(pdm_maint))) {
-  cat("There are duplicates in the dataset.\n")
-} else {
-  cat("There are no duplicates in the dataset.\n")
-}
-
-# Check for missing values
-if (any(is.na(pdm_maint))) {
-  cat("There are missing values in the dataset.\n")
-} else {
-  cat("There are no missing values in the dataset.\n")
-}
+analyze_data_quality(pdm_maint)
 ```
+Maintenance data is present June 2014 onwards. This is different from other data which are present between 2015 and 2016.
 
 ### Plot Number of Maintenance Records Across Months
 ```{r}
@@ -509,6 +461,32 @@ fig <- fig %>% layout(
   barmode = "stack",
   title = "Machine Age Distribution"
 )
+
+# Display the plot
+fig
+```
+
+#EDA failures
+```{r}
+glimpse(pdm_failures)
+head(pdm_failures)
+```
+
+### Data Quality Check
+```{r}
+analyze_data_quality(pdm_failures)
+```
+
+### Count of Failures
+```{r}
+# Create a plotly bar chart
+fig <- plot_ly(pdm_failures, x = ~failure, type = "histogram") %>%
+  layout(
+    title = "Count of Failures",
+    xaxis = list(title = "Failure Type"),
+    yaxis = list(title = "Count"),
+    template = "plotly_dark"
+  )
 
 # Display the plot
 fig
