@@ -14,6 +14,7 @@ library(dplyr)
 library(ggplot2)
 library(GGally)
 library(tidyr)
+library(plotly)
 ```
 
 # Load data
@@ -440,3 +441,76 @@ plot <- ggplot(data = pdm_maint, aes(x = as.Date(datetime))) +
 print(plot)
 ```
 This indicates that there is a drastic difference between the number of maintenance records in 2014 vs 2015.
+
+#EDA machines
+This data set includes some information about the machines: model type and age (years in service).
+```{r}
+glimpse(pdm_machines)
+head(pdm_machines)
+```
+
+### Distribution of Machine Ages
+```{r}
+# Create a box plot for the distribution of machine ages
+plot <- ggplot(pdm_machines, aes(y = age)) +
+  geom_boxplot() +
+  labs(
+    y = "Machine Age",
+    title = "Distribution of Machine Ages"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+The age of the Machines is distributed between 0 to 20. The median age is to ~12.5. There are no outliers. Another indication that this is a synthetic data.
+
+### Machine Age Distribution
+```{r}
+# Create a plotly figure
+fig <- plot_ly()
+
+# Add histogram traces for each model
+fig <- fig %>% add_trace(
+  data = pdm_machines %>%
+    filter(model == "model1"),
+  x = ~age,
+  name = "model1",
+  type = "histogram"
+)
+
+fig <- fig %>% add_trace(
+  data = pdm_machines %>%
+    filter(model == "model2"),
+  x = ~age,
+  name = "model2",
+  type = "histogram"
+)
+
+fig <- fig %>% add_trace(
+  data = pdm_machines %>%
+    filter(model == "model3"),
+  x = ~age,
+  name = "model3",
+  type = "histogram"
+)
+
+fig <- fig %>% add_trace(
+  data = pdm_machines %>%
+    filter(model == "model4"),
+  x = ~age,
+  name = "model4",
+  type = "histogram"
+)
+
+# Customize layout
+fig <- fig %>% layout(
+  xaxis = list(title = "Age"),
+  yaxis = list(title = "Count"),
+  barmode = "stack",
+  title = "Machine Age Distribution"
+)
+
+# Display the plot
+fig
+```
+
