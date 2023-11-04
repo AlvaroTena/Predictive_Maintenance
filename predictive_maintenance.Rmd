@@ -81,6 +81,9 @@ if (!require(astsa)) {
 if (!require(quantmod)) {
   install.packages("quantmod")
 }
+if (!require(urca)) {
+  install.packages("urca")
+}
 
 library(readr)
 library(dplyr)
@@ -106,6 +109,7 @@ library(stats)
 library(tseries)
 library(astsa)
 library(quantmod)
+library(urca)
 ```
 ### helper functions
 ```{r}
@@ -664,9 +668,18 @@ adf.test(total_failures.ts)
 ```
 ```{r}
 total_failures_log <- log(total_failures.ts)
-total_failures_log <- total_failures_log[!is.na(total_failures_log)]
-plot(total_failures_log)
-adf.test(total_failures_log, alternative = 'stationary')
+total_failures_log <- total_failures_log[!is.na(total_failures_log) & is.finite(total_failures_log)]
+
+# Check if there is enough non-NA and finite data to perform the ADF test.
+if (length(total_failures_log) > 0) {
+  plot(total_failures_log)
+  
+  # Perform the ADF test
+  ur.df_result <- ur.df(total_failures_log, type = "none", selectlags = "AIC")
+  summary(ur.df_result)
+} else {
+  cat("There is insufficient non-NA and finite data to perform the ADF test.\n")
+}
 ```
 ```{r}
 modelT=auto.arima(total_failures.ts)
