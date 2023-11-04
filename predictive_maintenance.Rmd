@@ -11,6 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(readr)
 library(dplyr)
+library(ggplot2)
+library(GGally)
+library(tidyr)
 ```
 
 # Load data
@@ -82,3 +85,81 @@ pdm_maint <- pdm_maint %>%
 pdm_failures <- pdm_failures %>%
   arrange(datetime, machineID)
 ```
+
+# EDA: Telemetry
+```{r}
+glimpse(pdm_telemetry)
+head(pdm_telemetry)
+```
+
+### n_machines
+```{r}
+print("The number of unique machines in the pdm_telemetry dataset is:")
+print(pdm_telemetry %>%
+    distinct(machineID) %>%
+    nrow()
+)
+```
+
+### Data range
+```{r}
+date_range <- pdm_telemetry %>%
+  summarize(
+    min_datetime = min(datetime),
+    max_datetime = max(datetime)
+  )
+
+print(paste(
+  "Data is available in the date range from",
+  date_range$min_datetime,
+  "to",
+  date_range$max_datetime
+))
+```
+### Data Quality Check
+```{r}
+# Check for duplicates
+if (any(duplicated(pdm_telemetry))) {
+  cat("There are duplicates in the dataset.\n")
+} else {
+  cat("There are no duplicates in the dataset.\n")
+}
+
+# Check for missing values
+if (any(is.na(pdm_telemetry))) {
+  cat("There are missing values in the dataset.\n")
+} else {
+  cat("There are no missing values in the dataset.\n")
+}
+```
+
+### Correlation and Distribution Scatterplot Matrix
+```{r}
+ggpairs(pdm_telemetry %>%
+  select(volt, rotate, pressure, vibration))
+```
+
+### Visualize Machine 1 Sensor Data
+```{r}
+# Filter and select data for Machine 1
+df_machine_1 <- pdm_telemetry %>%
+  filter(machineID == 1) %>%
+  select(datetime, volt, rotate, pressure, vibration)
+
+# Reshape the data to long format
+df_machine_1_long <- df_machine_1 %>%
+  gather(variable, value, -datetime)
+
+# Create a facetted line plot
+ggplot(df_machine_1_long, aes(x = datetime, y = value, color = variable)) +
+  geom_line(size = 1) +
+  labs(title = "Variables for Machine 1", xlabel = "Time", ylabel = "Value") +
+  facet_wrap(~variable, scales = "free_y", ncol = 1)
+```
+
+### Observations about Telemetry Data
+- This may be synthetically generated data distributed between 1st Jan 2015 to 1st Jan 2016.
+- Each row represents the state of a machine on a particular hour. Voltage, vibration, pressure & rotation of a machine have been averaged hourly.
+- There are 100 unique Machines.
+- There are no duplicates or missing values in the pdm_telemetry dataset.
+- The four parameters voltage, vibration, pressure & rotation are normally distributed.
