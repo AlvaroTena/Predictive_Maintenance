@@ -165,6 +165,7 @@ ggplot(df_machine_1_long, aes(x = datetime, y = value, color = variable)) +
 - The four parameters voltage, vibration, pressure & rotation are normally distributed.
 
 # EDA: Error
+This data includes the errors encountered by the machines while in operating condition. Since, these errors don't shut down the machines, these are not considered as failures. The error date and times are rounded to the closest hour since the telemetry data is collected at an hourly rate.
 ```{r}
 glimpse(pdm_errors)
 head(pdm_errors)
@@ -307,3 +308,135 @@ plot <- ggplot(errors_per_day, aes(x = ErrorCount)) +
 print(plot)
 ```
 
+# EDA: Maintenance
+If a component of a machine is replaced, that is captured as a record in this table. Components are replaced under two situations:
+- During the regular scheduled visit, the technician replaced it (Proactive Maintenance)
+- A component breaks down and then the technician does an unscheduled maintenance to replace the component (Reactive Maintenance). This is considered as a failure and corresponding data is captured under Failures. Maintenance data has both 2014 and 2015 records. This data is rounded to the closest hour since the telemetry data is collected at an hourly rate.
+```{r}
+glimpse(pdm_maint)
+head(pdm_maint)
+```
+
+### Data range
+```{r}
+date_range_maint <- pdm_maint %>%
+  summarize(
+    min_datetime = min(datetime),
+    max_datetime = max(datetime)
+  )
+
+print(paste(
+  "Data is available in the date range from",
+  date_range_maint$min_datetime,
+  "to",
+  date_range_maint$max_datetime
+))
+```
+Maintenance data is present June 2014 onwards. This is different from other data which are present between 2015 and 2016.
+
+### Data Quality Check
+```{r}
+# Check for duplicates
+if (any(duplicated(pdm_maint))) {
+  cat("There are duplicates in the dataset.\n")
+} else {
+  cat("There are no duplicates in the dataset.\n")
+}
+
+# Check for missing values
+if (any(is.na(pdm_maint))) {
+  cat("There are missing values in the dataset.\n")
+} else {
+  cat("There are no missing values in the dataset.\n")
+}
+```
+
+### Plot Number of Maintenance Records Across Months
+```{r}
+# Extract month and year from datetime column
+pdm_maint <- pdm_maint %>%
+  mutate(month_year = format(datetime, "%Y-%m"))
+
+# Create a bar plot for the number of maintenance records across months and years
+plot <- ggplot(pdm_maint, aes(x = month_year)) +
+  geom_bar() +
+  labs(
+    x = "Month-Year",
+    y = "Number of Maintenance Records",
+    title = "Number of Maintenance Records Across Months and Years"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+Number of components replaced in the year 2015 are considerably higher compared to the 2014.
+
+### Components Replaced
+```{r}
+# Create a bar plot for the number of components replaced
+plot <- ggplot(pdm_maint, aes(x = comp)) +
+  geom_bar() +
+  labs(
+    x = "Component",
+    y = "Count",
+    title = "Components Replaced"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+Four types components are replaced almost in the same numbers.
+
+### Number of Maintenance Records Across Machines
+```{r}
+# Create a bar plot for the number of maintenance records across machine IDs
+plot <- ggplot(pdm_maint, aes(x = factor(machineID))) +
+  geom_bar() +
+  coord_flip() +
+  labs(
+    x = "Machine ID",
+    y = "Number of Maintenance Records",
+    title = "Number of Maintenance Records Across Machine IDs"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+
+### Machine to Components Replaced
+```{r}
+# Group by machineID and comp, count occurrences, and reset column names
+df_maint <- pdm_maint %>%
+  group_by(machineID, comp) %>%
+  summarise(num_comp = n()) %>%
+  ungroup()
+
+# Create a stacked bar plot for machine-to-components replaced
+plot <- ggplot(df_maint, aes(x = factor(machineID), y = num_comp, fill = comp)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.8) +
+  labs(
+    x = "Machine ID",
+    y = "Number of Components Replaced",
+    title = "Count of Components Replaced for Different Machines"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")  # Move the legend to the top
+
+print(plot)
+```
+
+### Number of Maintenance Issues Raised Per Day
+```{r}
+# Count the number of maintenance records per day and create a time series plot
+plot <- ggplot(data = pdm_maint, aes(x = as.Date(datetime))) +
+  geom_point(aes(y = after_stat(count)), stat = "count", color = "black") +
+  labs(
+    x = "Time",
+    y = "Number of Maintenance Records",
+    title = "Number of Maintenance Records Across Time"
+  ) +
+  theme_minimal()
+
+print(plot)
+```
+This indicates that there is a drastic difference between the number of maintenance records in 2014 vs 2015.
